@@ -2,6 +2,7 @@
 #include <string.h>
 #include <mqueue.h>
 #include <stdlib.h>
+#include <syslog.h>
 #include "backup.h"
 #include "transfer.h"
 #include "givePermissions.h"
@@ -38,7 +39,7 @@ int daemonLoop() {
             writeAuditLogs();
             terminate = 1;
 		}else{
-            printf("Error: %s\n", buffer);
+            syslog(LOG_ERR, "Message Queue Error: %s", buffer);
         }
 
 	} while(!terminate);

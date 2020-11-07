@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <time.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -18,36 +19,34 @@
 
 #define LOCKFILE "/var/run/serverDaemon.pid"
 #define LOCKMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH)
-#define LOCK_SH 1
 
 int is_running(void){
-    int fd;
-    char buf[16];
-
-    fd = open(LOCKFILE, O_RDWR|O_CREAT, LOCKMODE);
-
-    if(fd < 0){
-        syslog(LOG_ERR, "can't open %s: %s", LOCKFILE, strerror(errno));
-        printf("Daemon already running\n");
-        exit(1);
-    }
-    if(flock(fd, LOCK_SH) < 0) {
-        if(errno == EACCES || errno == EAGAIN) {
-            close(fd);
-            return(1);
+    int pid_file = open(LOCKFILE, O_CREAT | O_RDWR, LOCKMODE);
+    int rc = flock(pid_file, LOCK_EX | LOCK_NB);
+    if(rc) {
+        if(EWOULDBLOCK == errno){
+            syslog(LOG_ERR, "can't open %s: %s", LOCKFILE, strerror(errno));
+            printf("Daemon already running\n");
+            exit(1);
         }
-        syslog(LOG_ERR, "Can't lock %s: %s", LOCKFILE, strerror(errno));
-        exit(1);
     }
-    ftruncate(fd,0);
-    sprintf(buf, "%ld", (long)getpid());
-    write(fd, buf, strlen(buf) + 1);
-    return(0);
+    else {
+        return(0);
+    }
 }
 
 int main()
 {
     is_running();
+
+    time_t now;
+    struct tm backup;
+    double seconds;
+    time(&now);  /* get current time; same as: now = time(NULL)  */
+    backup = *localtime(&now);
+    backup.tm_hour = 18; 
+    backup.tm_min = 29; 
+    backup.tm_sec = 0;
 
     // Create a child process      
     int pid = fork();
@@ -83,60 +82,99 @@ int main()
             // dup2(fd, STDOUT_FILENO);
             // dup2(fd, STDERR_FILENO);
 
-            // close(STDIN_FILENO);
-            // close(STDOUT_FILENO);
-            // close(STDERR_FILENO);
-
             //set watch
             givePermissions();
             removeLivePermissions();
 
             int pid = fork();
             if (pid > 0) {
-                while(1) {
-                    printf("\nCountdown = 0\n");
-                    printf("daemonLoop\n");
-                    daemonLoop();
-                    printf("daemonLoop finished\n");
-                    sleep(30);
-                }
+                // while(1) {
+                //     // printf("loop\n");
+                //     // sleep(1);
+                //     sleep(1);
+                //     time(&now);
+                //     seconds = difftime(now,mktime(&backup));
+                //     printf("%.f\n", seconds);
+                //     if (seconds == 0) {
+                //         daemonLoop();
+                //     }
+                // }
+                exit(EXIT_SUCCESS);
             } else if (pid == 0){
                 mqd_t mq;
                 struct mq_attr queue_attributes;
                 char buffer[1024 + 1];
+                int terminate = 0;
 
                 queue_attributes.mq_flags = 0;
                 queue_attributes.mq_maxmsg = 10;
                 queue_attributes.mq_msgsize = 1024;
                 queue_attributes.mq_curmsgs = 0;
 
-                mq = mq_open("/force_transfer_queue", O_CREAT | O_RDONLY, 0644, &queue_attributes);
-                
+                mq = mq_open("/force_transfer", O_CREAT | O_RDONLY, 0644, &queue_attributes);
+
                 do {
                     ssize_t bytes_read;
 
-                    bytes_read = mq_receive(mq, buffer, 1024, NULL); 
+                    bytes_read = mq_receive(mq, buffer, 1024, NULL);
                     buffer[bytes_read] = "\0";
 
-                    //CHANGE THIS TO BE if not transfer_complete block - transfer, else - set
-
                     if (! strncmp(buffer, "transfer_complete", strlen("transfer_complete"))) {
+                        printf("1 buffer: %s\n", buffer);
                         givePermissions();
-                    } else {
-                        printf("File: %s\n", buffer);
+                    } else if(! strncmp(buffer, "transfer_start", strlen("transfer_start"))){
+                        printf("2 buffer: %s\n", buffer);
                         removePermissions();
-                        transfer("/force_transfer_queue");
+                        transfer("/force_transfer");
+                    }else{
+                        printf("3 buffer: %s\n", buffer);
+                        syslog(LOG_ERR, "Message Queue Error: %s", buffer);
                     }
 
-                } while(1);
+                } while(!terminate);
 
                 mq_close(mq);
-                mq_unlink("/force_transfer_queue");
-                return 0;
-            }else{
-                printf("Fork Failed");
+                mq_unlink("/force_transfer");
+                exit(EXIT_FAILURE);
+                // mqd_t mq;
+                // struct mq_attr queue_attributes;
+                // char buffer[1024 + 1];
+                // int terminate = 0;
+
+                // queue_attributes.mq_flags = 0;
+                // queue_attributes.mq_maxmsg = 10;
+                // queue_attributes.mq_msgsize = 1024;
+                // queue_attributes.mq_curmsgs = 0;
+
+                // mq = mq_open("/force_transfer", O_CREAT | O_RDONLY, 0644, &queue_attributes);
+                
+                // do {
+                //     printf("other loop\n");
+                //     ssize_t bytes_read;
+
+                //     bytes_read = mq_receive(mq, buffer, 1024, NULL); 
+                //     buffer[bytes_read] = "\0";
+                //     printf("buffer: %s\n", buffer);
+
+                //     if (! strncmp(buffer, "transfer_complete", strlen("transfer_complete"))) {
+                //         printf("2: %s\n", buffer);
+                //         givePermissions();
+                //     } else if (! strncmp(buffer, "transfer_start", strlen("transfer_start"))){
+                //         printf("1: %s\n", buffer);
+                //         removePermissions();
+                //         transfer("/force_transfer");
+                //     }
+                //     else {
+                //         printf("3: %s\n", buffer);
+                //         syslog(LOG_ERR, "Message Queue Error: %s", buffer);
+                //     }
+
+                // } while(1);
+
+                // mq_close(mq);
+                // mq_unlink("/force_transfer");
+                // return 0;
             }
-            
        }
     }
  

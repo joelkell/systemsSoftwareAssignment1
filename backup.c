@@ -24,15 +24,15 @@ int backup() {
         strcpy(directory,"/var/www/backup/");
         snprintf(buf, 12, "%d", (timeinfo->tm_year + 1900));
         strcat(directory,buf);
-        snprintf(buf, 12, "%d", timeinfo->tm_mon);
+        snprintf(buf, 12, "%02d", timeinfo->tm_mon + 1);
         strcat(directory,buf);
-        snprintf(buf, 12, "%d", timeinfo->tm_mday);
+        snprintf(buf, 12, "%02d", timeinfo->tm_mday);
         strcat(directory,buf);
-        snprintf(buf, 12, "%d", timeinfo->tm_hour);
+        snprintf(buf, 12, "%02d", timeinfo->tm_hour);
         strcat(directory,buf);
-        snprintf(buf, 12, "%d", timeinfo->tm_min);
+        snprintf(buf, 12, "%02d", timeinfo->tm_min);
         strcat(directory,buf);
-        snprintf(buf, 12, "%d", timeinfo->tm_sec);
+        snprintf(buf, 12, "%02d", timeinfo->tm_sec);
         strcat(directory,buf);
         strcat(directory,"/");
 
