@@ -1,0 +1,6 @@
+#ifndef WRITEAUDITLOGSTOFILE_H_
+#define WRITEAUDITLOGSTOFILE_H_
+
+int writeAuditLogs();
+
+#endif //  WRITEAUDITLOGSTOFILE_H_

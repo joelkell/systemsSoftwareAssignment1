@@ -1,0 +1,6 @@
+#ifndef REMOVELIVEPERMISSIONS_H_
+#define REMOVELIVEPERMISSIONS_H_
+
+int removeLivePermissions();
+
+#endif //  REMOVELIVEPERMISSIONS_H_
