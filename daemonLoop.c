@@ -22,7 +22,7 @@ int daemonLoop() {
 
 	mq = mq_open("/status_queue", O_CREAT | O_RDONLY, 0644, &queue_attributes);
 
-	removePermissions();
+	removePermissions();//Intranet folder cannot be edited during backup
 	
     backup();
 
@@ -32,9 +32,9 @@ int daemonLoop() {
 		bytes_read = mq_receive(mq, buffer, 1024, NULL);
 		buffer[bytes_read] = "\0";
 
-		if (! strncmp(buffer, "backup_complete", strlen("backup_complete"))) {
+		if (! strncmp(buffer, "backup_complete", strlen("backup_complete"))) { //On backup complete
             transfer("/status_queue");
-		} else if(! strncmp(buffer, "transfer_complete", strlen("transfer_complete"))){
+		} else if(! strncmp(buffer, "transfer_complete", strlen("transfer_complete"))){//On transfer complete
 			givePermissions();
             writeAuditLogs();
             terminate = 1;

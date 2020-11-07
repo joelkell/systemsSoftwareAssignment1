@@ -21,6 +21,7 @@
 #define LOCKFILE "/var/run/serverDaemon.pid"
 #define LOCKMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH)
 
+//Lockfile so that only one instance of daemon can be run
 int is_running(void){
     int pid_file = open(LOCKFILE, O_CREAT | O_RDWR, LOCKMODE);
     int rc = flock(pid_file, LOCK_EX | LOCK_NB);
@@ -43,11 +44,11 @@ int main()
     time_t now;
     struct tm backup;
     double seconds;
-    time(&now);  /* get current time; same as: now = time(NULL)  */
-    backup = *localtime(&now);
-    backup.tm_hour = 20; 
-    backup.tm_min = 07; 
-    backup.tm_sec = 0;
+    time(&now);
+    backup = *localtime(&now); //Set time for backup to happen
+    backup.tm_hour = 23; 
+    backup.tm_min = 59; 
+    backup.tm_sec = 59;
 
     // Create a child process      
     int pid = fork();
@@ -55,35 +56,23 @@ int main()
     if (pid > 0) {
         exit(EXIT_SUCCESS);
     } else if (pid == 0) {
-       // Step 1: Create the orphan process
-       
-       // Step 2: Elevate the orphan process to session leader, to loose controlling TTY
-       // This command runs the process in a new session
        if (setsid() < 0) { exit(EXIT_FAILURE); }
 
-       // We could fork here again , just to guarantee that the process is not a session leader
        int pid = fork();
        if (pid > 0) {
             exit(EXIT_SUCCESS);
        } else {
        
-            // Step 3: call umask() to set the file mode creation mask to 0
-            // This will allow the daemon to read and write files 
-            // with the permissions/access required 
             umask(0);
 
-            // Step 4: Change the current working dir to root.
-            // This will eliminate any issues of running on a mounted drive, 
-            // that potentially could be removed etc..
             if (chdir("/") < 0 ) { exit(EXIT_FAILURE); }
 
-            // int fd;
-            // fd = open("dev/null", O_RDWR);
-            // dup2(fd, STDIN_FILENO);
-            // dup2(fd, STDOUT_FILENO);
-            // dup2(fd, STDERR_FILENO);
+            int fd;
+            fd = open("dev/null", O_RDWR);
+            dup2(fd, STDIN_FILENO);
+            dup2(fd, STDOUT_FILENO);
+            dup2(fd, STDERR_FILENO);
 
-            //set watch
             startAuditWatch();
             givePermissions();
             removeLivePermissions();
@@ -94,6 +83,8 @@ int main()
                     sleep(1);
                     time(&now);
                     seconds = difftime(now,mktime(&backup));
+
+                    //Run loop at backup time
                     if (seconds == 0) {
                         daemonLoop();
                     }
@@ -112,6 +103,7 @@ int main()
 
                 mq = mq_open("/force_transfer", O_CREAT | O_RDONLY, 0644, &queue_attributes);
 
+                //Message queue allows transfer to be done at any time
                 do {
                     ssize_t bytes_read;
 

@@ -11,8 +11,7 @@ int startAuditWatch() {
     int pid = fork();
  
     if (pid == 0) {
-        //system("sudo auditctl -w /var/www/html/intranet/ -p wrxa");
-        system("echo hello");
+        system("sudo auditctl -w /var/www/html/intranet/ -p wrxa");
         exit(EXIT_SUCCESS);
     } else if (pid > 0) {
         int status;

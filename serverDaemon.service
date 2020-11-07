@@ -1,0 +1,13 @@
+[Unit]
+Description=My Website Manager Service
+
+[Service]
+User=root
+WorkingDirectory=/
+KillMode=process
+ExecStart=/usr/bin/serverDaemon
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+Alias=webDaemon.service
