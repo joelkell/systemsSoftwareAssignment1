@@ -46,9 +46,9 @@ int main()
     double seconds;
     time(&now);
     backup = *localtime(&now); //Set time for backup to happen
-    backup.tm_hour = 23; 
-    backup.tm_min = 59; 
-    backup.tm_sec = 59;
+    backup.tm_hour = 00; 
+    backup.tm_min = 20; 
+    backup.tm_sec = 00;
 
     // Create a child process      
     int pid = fork();
@@ -83,7 +83,6 @@ int main()
                     sleep(1);
                     time(&now);
                     seconds = difftime(now,mktime(&backup));
-
                     //Run loop at backup time
                     if (seconds == 0) {
                         daemonLoop();

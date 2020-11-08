@@ -9,7 +9,7 @@ int removePermissions() {
     int pid = fork();
  
     if (pid == 0) {
-        char *argv[]={"chmod","444","-R","/var/www/html/intranet", NULL};
+        char *argv[]={"chmod","555","-R","/var/www/html/intranet", NULL};
         execv("/bin/chmod",argv);
     } else if (pid > 0) {
         int status;
